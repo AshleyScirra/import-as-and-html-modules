@@ -1,0 +1,8 @@
+{
+	"desc": "Example JSON data",
+	"hello": "world",
+	"array": [1, 2, 3],
+	"more": {
+		"key": "value"
+	}
+}

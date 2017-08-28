@@ -1,0 +1,12 @@
+
+<link rel="stylesheet" href="dialog1.css">
+
+<dialog id="dialog1">
+	<h2>Dialog 1</h2>
+	<p>This is dialog 1, implemented entirely via a standalone HTML module. The module includes the markup, JavaScript logic and CSS styles for the dialog, and loads Dialog 2 as a sub-module.</p>
+	<button class="dialog2">Open dialog 2</button> <button class="close">Close</button>
+</dialog>
+
+<link rel="html-module" href="dialog2/dialog2.html">
+
+<script src="dialog1.js"></script>

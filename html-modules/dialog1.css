@@ -1,0 +1,12 @@
+
+#dialog1 {
+	background-color: #DDF;
+	max-width: 30em;
+	border-radius: 1em;
+	text-align: center;
+	font-family: system-ui, sans-serif;
+}
+
+#dialog1 h2 {
+	margin-top: 0;
+}

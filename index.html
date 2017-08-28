@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Import As + HTML Modules demo</title>
+	
+	<script type="module" src="main.js"></script>
+	<style>
+	#resultArea {
+		min-height: 200px;
+		border: 1px solid #888;
+		white-space: pre-wrap;
+	}
+	</style>
+</head>
+<body>
+	<h1>importAs() + HTML modules proof of concept</h1>
+	
+	<p>Select a type of thing to load via importAs():</p>
+	
+	<select id="importType">
+		<option value="string">importAs("text.txt", String)</option>
+		<option value="json">importAs("data.json", JSON)</option>
+		<option value="blob">importAs("lenna.png", Blob)</option>
+		<option value="arrayBuffer">importAs("lenna.png", ArrayBuffer)</option>
+		<option value="image">importAs("lenna.png", HTMLImageElement)</option>
+		<option value="imageBitmap">importAs("lenna.png", ImageBitmap)</option>
+		<option value="imageData">importAs("lenna.png", ImageData)</option>
+		<option value="canvas">importAs("lenna.png", Canvas2D)</option>
+		<option value="document">importAs("doc.html", Document)</option>
+		<option value="selector">importAs("doc.html", Selector("#part2"))</option>
+		<option value="selectorAll">importAs("doc.html", SelectorAll("div"))</option>
+		<option value="style">importAs("style.css", MainDocumentStyle)</option>
+		<option value="htmlModule">importAs("dialog1.html", HTMLModule)</option>
+	</select>
+	<button id="load">Load</button>
+	
+	<p>Result:</p>
+	<pre id="resultArea"></pre>
+</body>
+</html>

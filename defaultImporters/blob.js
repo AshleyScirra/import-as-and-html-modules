@@ -2,8 +2,8 @@
 if (!Symbol.importer)
 	throw new Error("Symbol.importer not defined");
 
-Blob[Symbol.importer] = function ImportBlob(url)
+Blob[Symbol.importer] = async function ImportBlob(url)
 {
-	return fetch(url)
-	.then(response => response.blob());
+	const response = await fetch(url);
+	return await response.blob();
 };

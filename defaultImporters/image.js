@@ -1,15 +1,10 @@
 
+import { FetchImage } from "../util.js";
+
 if (!Symbol.importer)
 	throw new Error("Symbol.importer not defined");
 
-HTMLImageElement[Symbol.importer] = function ImportImage(url)
+HTMLImageElement[Symbol.importer] = async function ImportImage(url)
 {
-	// Simply promisify loading an <img> tag.
-	return new Promise((resolve, reject) =>
-	{
-		const img = document.createElement("img");
-		img.onload = (() => resolve(img));
-		img.onerror = reject;
-		img.src = url;
-	});
+	return await FetchImage(url);
 };

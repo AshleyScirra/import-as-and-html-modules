@@ -25,117 +25,84 @@ loadButton.addEventListener("click", () =>
 
 // Set of importAs() demo functions, corresponding to importTypeSelect.value
 const importFuncs = {
-	string()
+	async string()
 	{
-		importAs("resources/text.txt", String)
-		.then(text =>
-		{
-			resultArea.innerText = text;
-		});
+		resultArea.innerText = await importAs("resources/text.txt", String);
 	},
-	json()
+	async json()
 	{
-		importAs("resources/data.json", JSON)
-		.then(json =>
-		{
-			resultArea.innerText = JSON.stringify(json, null, 4);
-		});
+		const json = await importAs("resources/data.json", JSON);
+		resultArea.innerText = JSON.stringify(json, null, 4);
 	},
-	blob()
+	async blob()
 	{
-		importAs("resources/lenna.png", Blob)
-		.then(blob =>
-		{
-			resultArea.innerText = `Loaded Blob size ${blob.size}, type '${blob.type}'`;
-		});
+		const blob = await importAs("resources/lenna.png", Blob);
+		resultArea.innerText = `Loaded Blob size ${blob.size}, type '${blob.type}'`;
 	},
-	arrayBuffer()
+	async arrayBuffer()
 	{
-		importAs("resources/lenna.png", ArrayBuffer)
-		.then(arrayBuffer =>
-		{
-			resultArea.innerText = `Loaded ArrayBuffer byteLength ${arrayBuffer.byteLength}`;
-		});
+		const arrayBuffer = await importAs("resources/lenna.png", ArrayBuffer);
+		resultArea.innerText = `Loaded ArrayBuffer byteLength ${arrayBuffer.byteLength}`;
 	},
-	image()
+	async image()
 	{
-		importAs("resources/lenna.png", HTMLImageElement)
-		.then(img =>
-		{
-			resultArea.innerHTML = "";
-			resultArea.appendChild(img);
-		});
+		const imageElem = await importAs("resources/lenna.png", HTMLImageElement);
+		resultArea.innerHTML = "";
+		resultArea.appendChild(imageElem);
 	},
-	imageBitmap()
+	async imageBitmap()
 	{
-		importAs("resources/lenna.png", ImageBitmap)
-		.then(imageBitmap =>
-		{
-			resultArea.innerText = `Got ImageBitmap size ${imageBitmap.width} x ${imageBitmap.height}`;
-		});
+		const imageBitmap = await importAs("resources/lenna.png", ImageBitmap);
+		resultArea.innerText = `Got ImageBitmap size ${imageBitmap.width} x ${imageBitmap.height}`;
 	},
-	imageData()
+	async imageData()
 	{
-		importAs("resources/lenna.png", ImageData)
-		.then(imageData =>
-		{
-			resultArea.innerText = `Got ImageData size ${imageData.width} x ${imageData.height}, ${imageData.data.length} bytes`;
-		});
+		const imageData = await importAs("resources/lenna.png", ImageData);
+		resultArea.innerText = `Got ImageData size ${imageData.width} x ${imageData.height}, ${imageData.data.length} bytes`;
 	},
-	canvas()
+	async canvas()
 	{
-		importAs("resources/lenna.png", Canvas2D)
-		.then(img =>
-		{
-			resultArea.innerHTML = "Image is on a 2D canvas:<br/>";
-			resultArea.appendChild(img);
-		});
+		const canvas = await importAs("resources/lenna.png", Canvas2D);
+		resultArea.innerHTML = "Image is on a 2D canvas:<br/>";
+		resultArea.appendChild(canvas);
 	},
-	document()
+	async document()
 	{
-		importAs("resources/doc.html", Document)
-		.then(doc =>
-		{
-			resultArea.innerHTML = "";
-			resultArea.appendChild(doc.body);
-		});
+		const doc = await importAs("resources/doc.html", Document);
+		resultArea.innerHTML = "";
+		resultArea.appendChild(doc.body);
 	},
-	selector()
+	async selector()
 	{
-		importAs("resources/doc.html", Selector("#part2"))
-		.then(elem =>
-		{
-			resultArea.innerHTML = "";
+		const elem = await importAs("resources/doc.html", Selector("#part2"));
+		resultArea.innerHTML = "";
+		resultArea.appendChild(elem);
+	},
+	async selectorAll()
+	{
+		const elems = await importAs("resources/doc.html", SelectorAll("div"));
+		
+		resultArea.innerHTML = "";
+		
+		for (const elem of elems)
 			resultArea.appendChild(elem);
-		});
 	},
-	selectorAll()
+	async style()
 	{
-		importAs("resources/doc.html", SelectorAll("div"))
-		.then(elems =>
-		{
-			resultArea.innerHTML = "";
-			
-			for (const elem of elems)
-				resultArea.appendChild(elem);
-		});
+		await importAs("resources/style.css", MainDocumentStyle)
+		
+		resultArea.innerText = "Style applied to main document";
 	},
-	style()
+	async htmlModule()
 	{
-		importAs("resources/style.css", MainDocumentStyle)
-		.then(link =>
-		{
-			resultArea.innerText = "Style applied to main document";
-		});
-	},
-	htmlModule()
-	{
-		importAs("html-modules/dialog1.html", HTMLModule)
-		.then(htmlModule =>
-		{
-			resultArea.innerText = "Loaded HTML module, showing dialog1 from module";
-			
-			window.Dialog1.Show();
-		});
+		// Load the HTML module
+		const htmlModule = await importAs("html-modules/dialog1.html", HTMLModule);
+		
+		// Get Dialog1 from the module script in the HTML module
+		const Dialog1 = htmlModule.exports.get("Dialog1");
+		
+		Dialog1.Show();
+		
+		resultArea.innerText = "Loaded HTML module, showing dialog1 from module";
 	}
 };

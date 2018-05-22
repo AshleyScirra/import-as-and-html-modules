@@ -1,26 +1,28 @@
 
-"use strict";
+const myModule = getCurrentHtmlModule(import.meta.url);
+const myDoc = myModule.document;
+const dialogElem = myDoc.getElementById("dialog2");
+
+dialogElem.addEventListener("close", () =>
 {
-	const myDoc = getCurrentHtmlModule();
-	const dialogElem = myDoc.getElementById("dialog2");
-	
-	dialogElem.addEventListener("close", () =>
+	myDoc.body.appendChild(dialogElem);
+});
+
+const closeButton = dialogElem.querySelector(".close");
+closeButton.addEventListener("click", () => Dialog2.Hide());
+
+export const TAG = "Dialog2";
+
+export default class Dialog2
+{
+	static Show()
 	{
-		myDoc.body.appendChild(dialogElem);
-	});
+		document.body.appendChild(dialogElem);
+		dialogElem.showModal();
+	}
 	
-	const closeButton = dialogElem.querySelector(".close");
-	closeButton.addEventListener("click", () => Dialog2.Hide());
-	
-	window.Dialog2 = {
-		Show()
-		{
-			document.body.appendChild(dialogElem);
-			dialogElem.showModal();
-		},
-		Hide()
-		{
-			dialogElem.close();
-		}
-	};
-}
+	static Hide()
+	{
+		dialogElem.close();
+	}
+};

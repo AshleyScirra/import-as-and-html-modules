@@ -8,10 +8,7 @@ export default function importAs(url, type)
 {
 	// No importer: fall back to standard script module import()
 	if (typeof type === "undefined")
-	{
-		//return import(url);
-		throw new Error("TODO: fall back to import() when supported");
-	}
+		return import(url);
 	
 	// Look for the importer function on the type
 	const importer = type[Symbol.importer];

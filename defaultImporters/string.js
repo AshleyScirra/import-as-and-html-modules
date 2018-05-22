@@ -2,8 +2,8 @@
 if (!Symbol.importer)
 	throw new Error("Symbol.importer not defined");
 
-String[Symbol.importer] = function ImportString(url)
+String[Symbol.importer] = async function ImportString(url)
 {
-	return fetch(url)
-	.then(response => response.text());
+	const response = await fetch(url);
+	return await response.text();
 };

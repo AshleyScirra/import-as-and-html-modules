@@ -1,9 +1,11 @@
 
+import { AddStylesheet, FetchDocument } from "./util.js";
+
 if (!Symbol.importer)
 	throw new Error("Symbol.importer not defined");
 
-// Map a script URL to its HTML module document for getCurrentHtmlModule() to work.
-const scriptUrlToModuleDoc = new Map();
+// Map a script URL to its HTML module for getCurrentHtmlModule() to work.
+const scriptUrlToModule = new Map();
 
 // Utility function to parse the path from a URL
 function GetPathFromURL(url)
@@ -32,8 +34,8 @@ function GetBaseURL()
 	return GetPathFromURL(location.origin + location.pathname);
 };
 
-// Utility functions to have promisified ways to add <script> and <link rel="stylesheet"> tags to <head>
-function AddScript(url, isModule)
+// Utility functions to have promisified ways to add a classic (non-module) <script>.
+function AddScript(url)
 {
 	return new Promise((resolve, reject) =>
 	{
@@ -41,60 +43,20 @@ function AddScript(url, isModule)
 		elem.onload = resolve;
 		elem.onerror = reject;
 		elem.async = false;		// preserve execution order
-		if (isModule)
-			elem.type = "module";
 		elem.src = url;
 		document.head.appendChild(elem);
 	});
 }
 
-function AddStylesheet(url)
-{
-	return new Promise((resolve, reject) =>
-	{
-		const elem = document.createElement("link");
-		elem.onload = resolve;
-		elem.onerror = reject;
-		elem.rel = "stylesheet";
-		elem.href = url;
-		document.head.appendChild(elem);
-	});
-}
-
-// Utility function to fetch a URL as type document. fetch() can't do document type yet, so use XHR.
-function FetchDocument(url)
-{
-	return new Promise((resolve, reject) =>
-	{
-		const xhr = new XMLHttpRequest();
-		xhr.onload = (() =>
-		{
-			if (xhr.status >= 200 && xhr.status < 300)
-			{
-				resolve(xhr.response);
-			}
-			else
-			{
-				reject(new Error("Failed to fetch '" + url + "': " + xhr.status + " " + xhr.statusText));
-			}
-		});
-		xhr.onerror = reject;
-
-		xhr.open("GET", url);
-		xhr.responseType = "document";
-		xhr.send();
-	});
-};
-
 // Check all children of parentElem for anything that looks like subresources that can be loaded, and
 // return an array of them. NOTE: this is shallow, it won't check anything other than direct children.
-function FindSubResourceElements(parentElem, context)
+function FindSubResourceElements(parentElem, htmlModule)
 {
 	const ret = [];
 	
 	for (let i = 0, len = parentElem.children.length; i < len; ++i)
 	{
-		const o = CheckForSubResourceElem(parentElem.children[i], context);
+		const o = CheckForSubResourceElem(parentElem.children[i], htmlModule);
 		
 		if (o)
 			ret.push(o);
@@ -104,7 +66,7 @@ function FindSubResourceElements(parentElem, context)
 };
 
 // Check if a given element is a subresource we can load.
-function CheckForSubResourceElem(elem, context)
+function CheckForSubResourceElem(elem, htmlModule)
 {
 	const tagName = elem.tagName.toLowerCase();
 	
@@ -118,7 +80,7 @@ function CheckForSubResourceElem(elem, context)
 		{
 			return {
 				type: "stylesheet",
-				url: context.baseUrl + href
+				url: htmlModule.baseUrl + href
 			};
 		}
 		// <link rel="html-module">: this is a made-up tag to load a sub-resource as a nested HTML module
@@ -126,7 +88,7 @@ function CheckForSubResourceElem(elem, context)
 		{
 			return {
 				type: "html-module",
-				url: context.baseUrl + href
+				url: htmlModule.baseUrl + href
 			};
 		}
 	}
@@ -134,17 +96,17 @@ function CheckForSubResourceElem(elem, context)
 	{
 		const src = elem.getAttribute("src");
 		
-		// <script src="...">: add a script subresource. NOTE: currently this only works with classic scripts,
-		// because getCurrentHtmlModule() depends on document.currentScript, which is not set in modules.
+		// <script src="...">: add a script subresource. Also supports module scripts.
 		if (src)
 		{
-			// Map the full script src to its module document so getCurrentHtmlModule() can find the associated document.
-			const scriptUrl = context.baseUrl + src;
-			scriptUrlToModuleDoc.set(new URL(scriptUrl, GetBaseURL()).toString(), context.doc);
+			// Map the full script src to its module object so getCurrentHtmlModule() can find the associated document and exports.
+			const scriptUrl = htmlModule.baseUrl + src;
+			scriptUrlToModule.set(new URL(scriptUrl, GetBaseURL()).toString(), htmlModule);
 
 			return {
 				type: "script",
-				url: scriptUrl
+				url: scriptUrl,
+				isModule: (elem.getAttribute("type") === "module")
 			};
 		}
 	}
@@ -155,45 +117,68 @@ function CheckForSubResourceElem(elem, context)
 // Load a HTML Module from a URL.
 async function LoadHTMLModule(url)
 {
-	const context = {
-		doc: null,							// document of the HTML page making up the HTML module
-		baseUrl: GetPathFromURL(url)		// base URL to load subresources from
+	const htmlModule = {
+		document: null,						// document of the HTML page making up the HTML module
+		baseUrl: GetPathFromURL(url),		// base URL to load subresources from
+		exports: new Map()					// Map of tags to the default export for script modules in the HTML
 	};
 	
 	// Load the URL as a HTML document.
 	const doc = await FetchDocument(url);
-	context.doc = doc;
+	htmlModule.document = doc;
 	
 	// Look for any sub-resources of the HTML module: <link rel="stylesheet">, <script src="...">, and
 	// a made-up <link rel="html-module"> to represent a sub-module.
-	const subResources = [...FindSubResourceElements(doc.head, context),
-						  ...FindSubResourceElements(doc.body, context)];
+	const subResources = [...FindSubResourceElements(doc.head, htmlModule),
+						  ...FindSubResourceElements(doc.body, htmlModule)];
 	
 	// Load each subresource of the module.
 	// NOTE: this is a naive implementation which sequentially loads resources one by one.
 	// This should use some kind of parallel loading approach for a real production library.
-	for (const {type, url} of subResources)
+	for (const { type, url, isModule } of subResources)
 	{
 		if (type === "script")
-			await AddScript(url);
+		{
+			if (isModule)
+			{
+				// For module scripts, get the default export, and associate it by its tag in the exports
+				// returned by the HTML module. If no tag is provided fall back to the script URL.
+				const module = await import("./" + url);
+				const tag = module.TAG || url;
+				htmlModule.exports.set(tag, module.default);
+			}
+			else
+			{
+				// Classic scripts are simply added to the document.
+				await AddScript(url);
+			}
+		}
 		else if (type === "stylesheet")
+		{
 			await AddStylesheet(url);
+		}
 		else if (type === "html-module")
-			await LoadHTMLModule(url);
+		{
+			// Load the nested HTML module, and merge its exports with this one's. This lets the caller
+			// access any nested script module exports. TODO: look for collisions with 'tag'.
+			const { exports } = await LoadHTMLModule(url);
+			
+			for (const [tag, exp] of exports)
+				htmlModule.exports.set(tag, exp);
+		}
 	}
 	
 	console.log("[HTML-Module] Loaded HTML module: " + url);
-	return doc;
+	return htmlModule;
 };
 
 // Add a global function for scripts to identify their associated HTML module, so they can find DOM elements
-// they want to operate on, e.g. <dialog> elements, <template>, etc.
-// NOTE: this depends on document.currentScript, which is unavailable in modules, so this currently only works
-// with classic scripts.
-window.getCurrentHtmlModule = function()
+// they want to operate on, e.g. <dialog> elements, <template>, etc. as well as any other exports in the HTML module.
+// In a module script the caller must pass import.meta.url; otherwise in a classic script it will automatically
+// determine it from document.currentScript.
+window.getCurrentHtmlModule = function (importMetaUrl)
 {
-	const currentScriptSrc = document.currentScript.src;
-	const importDoc = scriptUrlToModuleDoc.get(currentScriptSrc);
+	const importDoc = scriptUrlToModule.get(importMetaUrl || document.currentScript.src);
 
 	if (importDoc)
 	{
@@ -208,8 +193,8 @@ window.getCurrentHtmlModule = function()
 
 // The Symbol.importer method just calls in to LoadHTMLModule().
 export default {
-	[Symbol.importer](url)
+	async [Symbol.importer](url)
 	{
-		return LoadHTMLModule(url);
+		return await LoadHTMLModule(url);
 	}
 }
